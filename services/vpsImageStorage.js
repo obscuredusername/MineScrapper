@@ -284,32 +284,21 @@ class VPSImageStorage {
       const fontSize = Math.max(Math.floor(width / 25), 20);
       const padding = Math.floor(fontSize * 0.5);
 
-      // Base64-encoded Roboto Bold font (subset for common characters)
-      const embeddedFont = 'data:font/woff2;charset=utf-8;base64,d09GMgABAAAAABEcAA4AAAAAIdQAABDDAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGhYbgRwcKgZgAIEMEQgKoVCiPQE2AiQDcAsyAAQgBYNuB4NGG9EaB8geB7kp6wZhFMWg/GKg/39vSqzjEZ4Yvve/nXPv/GEykRnPZBKZRGgkQqJDEuleSGQ8JPojlLdK/v/81uq+TcZJNzFa1W63mKZ2RVxnslQXoZHJhKwSNovCWqH/Pzc3P733njknvgZ4nQQ4wPsAvwBuALcAbgC3/39u7v3sZ+Z7M5nJZLfbbsABDnDg/wEHOMABDnDg/wEHOPD/gAN8/w844AD/Dzi4Af4fcIAD/x9wgAP/H3BwA/w/4AAH/j/gAAf+P+AAB/4/4OAG+H/AAQ78f8ABDvx/wAEO/H/AwQ3w/4ADHPj/gAMc+P+AAxz4/4CDG+D/AQc48P8BBzjw/wEHOPD/AQc3wP8DDnDg/wMOcOD/Aw5w4P8DDm6A/wcc4MD/Bxzg4P8HDuDA/wcc3AD/H3CAA/8fcIAD/x9wgAP/H3BwA/w/4AAH/j/gAAf+f+AADvz/wMEN8P+AAxz4/4ADHPj/gAMc+P+Agxvg/wEHOPD/AQc48P8BBzjw/wEHN8D/Aw5w4P8DDnDg/wcO4MD/Dxy4Af4/cIAD/z9wgAP/P3CAA/8/cHAD/H/gAAf+f+AAB/5/4AAO/P/AwQ3w/4EDHPj/gQMc+P+BAxz4/4GDG+D/Aw9w4P8HDnDg/wcO4MD/Dxy4Af4/cIAD/z9wgAP/P3CAA/8/cHAD/H/gAQc+f+AAB/5/4AAO/P/AwQ3w/4EDHPj/gQMc+P+BAxz4/4GDG+D/Aw9w4P8HDnDg/wcO4MD/Dxy4Af4/cIAD/z9wgAP/P3CAA/8/cHAD/H/gAQ78/8ABDvz/wAEc+P+BAzfA/wcOcOD/Bw5w4P8HDnDg/wcObkD/D+DAB//g/wMHOPD/Awdw4P8HDtwA/x84wIH/HzjAgf8fOMCB/x84uAH9P4ADD/yD/x84wIH/HziAA/8/cOAG+P/AAQ78/8ABDvz/wAEO/P/AwQ3o/wEcePD/g/8fOMCB/x84gAP/P3DgBvj/wAEO/P/AAQ78/8ABDvz/wMEN6P8BHHjw/4P/HzjAgf8fOIAD/z9w4Ab4/8ABDvz/wAEO/P/AAQ78/8DBDej/ARx48P+D/x84wIH/HziAA/8/cOAG+P/AAQ78/8ABDvz/wAEO/P/AwQ3o/wEcePD/g/8fOMCB/x84gAP/P3DgBvj/wAEO/P/AAQ78/8ABDvz/wMEN6P8BHHjw/4P/HzjAgf8fOIAD/z9w4Ab4/8ABDvz/wAEO/P/AAQ78/8DBDej/ARx48P+D/x84wIH/HziAA/8/cOAG+P/AAQ78/8ABDvz/wAEO/P/AwQ3o/wEcePD/g/8fOMCB/x84gAP/P3DgBvj/wAEO/P/AAQ78/8ABDvz/wMEN6P8BHHjw/4P/HzjAgf8fOIAD/z9w4Ab4/8ABDvz/wAEO/P/AAQ78/8DBDej/ARx48P+D/x84wIH/HziAA/8/cOAG+P/AAQ78/8ABDvz/wAEO/P/AwQ3o/wEcePD/g/8fOMCB/x84gAP/P3DgBvj/wAEO/P/AAQ78/8ABDvz/wMEN6P8BHHjw/4P/HzjAgf8fOIAD/z9w4Ab4/8ABDvz/wAEO/P/AAQ78/8DBDej/Abzw=='; 
-
-      // Create semi-transparent watermark text SVG with embedded font
+      // Create semi-transparent watermark text SVG
       const watermarkSvg = Buffer.from(`
-        <svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
-          <defs>
-            <style type="text/css">
-              @font-face {
-                font-family: 'EmbeddedFont';
-                src: url('${embeddedFont}') format('woff2');
-                font-weight: bold;
-                font-style: normal;
-              }
-              .watermark { 
-                fill: white; 
-                font-size: ${fontSize}px; 
-                font-family: 'EmbeddedFont', Arial, sans-serif; 
-                font-weight: bold;
-                opacity: 0.4;
-                paint-order: stroke fill;
-                stroke: rgba(0,0,0,0.3);
-                stroke-width: 2px;
-              }
-            </style>
-          </defs>
+        <svg width="${width}" height="${height}">
+          <style>
+            .watermark { 
+              fill: white; 
+              font-size: ${fontSize}px; 
+              font-family: Arial, sans-serif; 
+              font-weight: bold;
+              opacity: 0.4;
+              paint-order: stroke fill;
+              stroke: rgba(0,0,0,0.3);
+              stroke-width: 2px;
+            }
+          </style>
           <!-- Top Left -->
           <text x="${padding}" y="${fontSize + padding}" class="watermark">${this.escapeXml(watermarkText)}</text>
           
