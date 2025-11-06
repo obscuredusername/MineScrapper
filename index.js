@@ -47,7 +47,7 @@ app.post('/api/search-images', async (req, res) => {
   const startTime = Date.now();
   
   try {
-    const { keyword, count = 3 } = req.body;
+    const { keyword, count = 3, watermark } = req.body;
     
     // Validation
     if (!keyword || typeof keyword !== 'string') {
@@ -67,8 +67,12 @@ app.post('/api/search-images', async (req, res) => {
     }
 
     const imageCount = Math.min(Math.max(parseInt(count) || 3, 1), 10); // Limit between 1-10
+    const watermarkText = watermark && typeof watermark === 'string' && watermark.trim() ? watermark.trim() : null;
     
     console.log(`\n🔍 Starting image search for keyword: "${keyword}" (${imageCount} images)`);
+    if (watermarkText) {
+      console.log(`🏷️  Watermark text: "${watermarkText}"`);
+    }
     
     // Step 1: Search for images using DuckDuckGo
     console.log('📡 Searching for images...');
@@ -87,7 +91,7 @@ app.post('/api/search-images', async (req, res) => {
     
     // Step 2: Process and store images on VPS
     console.log('🔄 Processing and storing images on VPS...');
-    const uploadResults = await vpsImageStorage.processMultipleImages(imageData, keyword);
+    const uploadResults = await vpsImageStorage.processMultipleImages(imageData, keyword, watermarkText);
     
     if (uploadResults.length === 0) {
       return res.status(500).json({
@@ -104,6 +108,7 @@ app.post('/api/search-images', async (req, res) => {
     res.json({
       success: true,
       keyword: keyword,
+      watermark: watermarkText || null,
       requested_count: imageCount,
       found_count: imageData.length,
       uploaded_count: uploadResults.length,
@@ -190,7 +195,8 @@ app.get('/api/docs', (req, res) => {
         description: 'Search for images and upload to Firebase Storage',
         body: {
           keyword: 'string (required) - Search keyword',
-          count: 'number (optional) - Number of images to fetch (1-10, default: 3)'
+          count: 'number (optional) - Number of images to fetch (1-10, default: 3)',
+          watermark: 'string (optional) - Watermark text to apply on images'
         },
         response: {
           success: 'boolean',
@@ -219,7 +225,8 @@ app.get('/api/docs', (req, res) => {
         url: '/api/search-images',
         body: {
           keyword: 'sunset',
-          count: 3
+          count: 3,
+          watermark: 'My Brand'
         }
       }
     }

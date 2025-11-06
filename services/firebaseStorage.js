@@ -104,12 +104,11 @@ class FirebaseStorageService {
         });
       }
 
-      // Convert to JPEG with optimization
+      // Convert to WebP with optimization
       const processedBuffer = await processedImage
-        .jpeg({
+        .webp({
           quality: 85,
-          progressive: true,
-          mozjpeg: true
+          effort: 6
         })
         .toBuffer();
 
@@ -140,7 +139,7 @@ class FirebaseStorageService {
       
       // Upload the file
       const metadata = {
-        contentType: 'image/jpeg',
+        contentType: 'image/webp',
         customMetadata: {
           uploadedAt: new Date().toISOString(),
           source: 'image-scraper-api'
@@ -170,7 +169,7 @@ class FirebaseStorageService {
     const uuid = uuidv4().split('-')[0]; // Use first part of UUID
     const sanitizedKeyword = keyword.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
     
-    return `images/${sanitizedKeyword}/${timestamp}_${uuid}_${index + 1}.jpg`;
+    return `images/${sanitizedKeyword}/${timestamp}_${uuid}_${index + 1}.webp`;
   }
 
   /**

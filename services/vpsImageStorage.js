@@ -34,14 +34,15 @@ class VPSImageStorage {
    * Process multiple images and store them on VPS
    * @param {Array} imageUrls - Array of image objects with url, source, title
    * @param {string} keyword - Search keyword for folder organization
+   * @param {string} watermarkText - Optional watermark text to apply on images
    * @returns {Promise<Array>} Array of processed image results
    */
-  async processMultipleImages(imageUrls, keyword) {
+  async processMultipleImages(imageUrls, keyword, watermarkText = null) {
     console.log(`🔄 Processing ${imageUrls.length} images on VPS...`);
     
     const uploadPromises = imageUrls.map(async (image, index) => {
       try {
-        const result = await this.downloadAndStoreImage(image, keyword, index);
+        const result = await this.downloadAndStoreImage(image, keyword, index, watermarkText);
         return {
           url: result.publicUrl,
           title: image.title || 'Untitled',
@@ -71,9 +72,10 @@ class VPSImageStorage {
    * @param {Object} imageData - Image object with url, source, title
    * @param {string} keyword - Search keyword for folder organization
    * @param {number} index - Image index for naming
+   * @param {string} watermarkText - Optional watermark text
    * @returns {Promise<Object>} Result with local path and public URL
    */
-  async downloadAndStoreImage(imageData, keyword, index) {
+  async downloadAndStoreImage(imageData, keyword, index, watermarkText = null) {
     try {
       console.log(`📥 Downloading image ${index + 1}: ${imageData.url}`);
       
@@ -81,7 +83,7 @@ class VPSImageStorage {
       const imageBuffer = await this.downloadImage(imageData.url);
       
       // Process and optimize image
-      const processedBuffer = await this.processImage(imageBuffer);
+      const processedBuffer = await this.processImage(imageBuffer, watermarkText);
       
       // Generate file path and name
       const { filePath, publicUrl } = this.generateFilePaths(keyword, index);
@@ -151,9 +153,10 @@ class VPSImageStorage {
   /**
    * Process and optimize image using Sharp
    * @param {Buffer} imageBuffer - Raw image buffer
+   * @param {string} watermarkText - Optional watermark text
    * @returns {Promise<Buffer>} Processed image buffer
    */
-  async processImage(imageBuffer) {
+  async processImage(imageBuffer, watermarkText = null) {
     try {
       // Get image metadata
       const metadata = await sharp(imageBuffer).metadata();
@@ -170,14 +173,18 @@ class VPSImageStorage {
         });
       }
 
-      // Convert to JPEG with optimization
-      const processedBuffer = await processedImage
-        .jpeg({
+      // Convert to WebP with optimization
+      let processedBuffer = await processedImage
+        .webp({
           quality: 85,
-          progressive: true,
-          mozjpeg: true
+          effort: 6
         })
         .toBuffer();
+
+      // Apply watermark if text is provided
+      if (watermarkText) {
+        processedBuffer = await this.applyWatermark(processedBuffer, watermarkText);
+      }
 
       console.log(`✨ Image processed: ${imageBuffer.length} bytes -> ${processedBuffer.length} bytes`);
       return processedBuffer;
@@ -199,7 +206,7 @@ class VPSImageStorage {
     const timestamp = Date.now();
     const uuid = uuidv4().split('-')[0]; // Use first part of UUID
     
-    const filename = `${timestamp}_${uuid}_${index + 1}.jpg`;
+    const filename = `${timestamp}_${uuid}_${index + 1}.webp`;
     const filePath = path.join(this.uploadDir, filename);
     const publicUrl = `${this.baseUrl}/images/${filename}`;
     
@@ -259,6 +266,87 @@ class VPSImageStorage {
       console.error('❌ Cleanup failed:', error.message);
       return 0;
     }
+  }
+
+  /**
+   * Apply watermark text to image at multiple positions
+   * @param {Buffer} imageBuffer - Image buffer
+   * @param {string} watermarkText - Text to use as watermark
+   * @returns {Promise<Buffer>} Watermarked image buffer
+   */
+  async applyWatermark(imageBuffer, watermarkText) {
+    try {
+      const image = sharp(imageBuffer);
+      const metadata = await image.metadata();
+      const { width, height } = metadata;
+
+      // Calculate font size based on image dimensions (responsive sizing)
+      const fontSize = Math.max(Math.floor(width / 25), 20);
+      const padding = Math.floor(fontSize * 0.5);
+
+      // Create semi-transparent watermark text SVG
+      const watermarkSvg = Buffer.from(`
+        <svg width="${width}" height="${height}">
+          <style>
+            .watermark { 
+              fill: white; 
+              font-size: ${fontSize}px; 
+              font-family: Arial, sans-serif; 
+              font-weight: bold;
+              opacity: 0.4;
+              paint-order: stroke fill;
+              stroke: rgba(0,0,0,0.3);
+              stroke-width: 2px;
+            }
+          </style>
+          <!-- Top Left -->
+          <text x="${padding}" y="${fontSize + padding}" class="watermark">${this.escapeXml(watermarkText)}</text>
+          
+          <!-- Top Right -->
+          <text x="${width - padding}" y="${fontSize + padding}" text-anchor="end" class="watermark">${this.escapeXml(watermarkText)}</text>
+          
+          <!-- Center -->
+          <text x="${width / 2}" y="${height / 2}" text-anchor="middle" class="watermark">${this.escapeXml(watermarkText)}</text>
+          
+          <!-- Bottom Left -->
+          <text x="${padding}" y="${height - padding}" class="watermark">${this.escapeXml(watermarkText)}</text>
+          
+          <!-- Bottom Right -->
+          <text x="${width - padding}" y="${height - padding}" text-anchor="end" class="watermark">${this.escapeXml(watermarkText)}</text>
+        </svg>
+      `);
+
+      // Composite watermark onto image
+      const watermarkedBuffer = await image
+        .composite([{
+          input: watermarkSvg,
+          top: 0,
+          left: 0
+        }])
+        .toBuffer();
+
+      console.log(`✨ Watermark "${watermarkText}" applied to image`);
+      return watermarkedBuffer;
+
+    } catch (error) {
+      console.error('⚠️ Watermark application failed:', error.message);
+      // Return original image if watermarking fails
+      return imageBuffer;
+    }
+  }
+
+  /**
+   * Escape XML special characters for SVG
+   * @param {string} text - Text to escape
+   * @returns {string} Escaped text
+   */
+  escapeXml(text) {
+    return text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&apos;');
   }
 }
 
